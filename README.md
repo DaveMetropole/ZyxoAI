@@ -1,27 +1,38 @@
-# ZyxoAI — Prototype
+# ZyxoAI — Prototype (No-key Ask + Math)
 
-ZyxoAI is a friendly, prototype AI assistant that can generate posters/images and edit text files via LLM/image API calls. This repository contains a minimal, low-code, single-file web prototype (index.html) so you can try ZyxoAI locally without setting up a server.
+ZyxoAI is a friendly prototype AI assistant. This branch adds free, no-key features:
+- Ask (Wikipedia): ask subject questions (history, science, English, etc.) — answers are pulled from Wikipedia summaries (no API key required).
+- Math evaluator: evaluate algebraic/arithmetic expressions in the browser using math.js (no API key required).
+- File edit (basic/no-key fallback): simple heuristic edits (shorten, simplify) without an LLM — useful for quick experiments.
+- Poster/Image generation and advanced LLM edits are still supported conceptually, but require an external API provider (placeholders remain in index.html).
 
-Important: This is a prototype. For simplicity the page runs API calls directly from your browser, which exposes your API key to the client. Do NOT use a secret key with any sensitive data. Prefer running a small server or serverless function for production and store keys in server-side secrets.
+How to try (quick)
+1. Clone the repo:
+   - `git clone https://github.com/DaveMetropole/ZyxoAI.git`
+   - `cd ZyxoAI`
+2. Open a local server (do not use file:// for fetch to work properly):
+   - `python3 -m http.server 8000`
+   - Open `http://localhost:8000/index.html`
+3. Use the UI:
+   - Choose "Ask (Wikipedia)" and enter a subject question (e.g., "Photosynthesis", "World War I causes", "Explain Newton's laws").
+   - Choose "Math" and enter expressions like `2+2`, `integrate(x^2, x)` — math.js supports many operations.
+   - For editing, upload a text file and give a simple instruction (the edit is a naive fallback without an LLM).
 
-Files in this repo
-- `index.html` — Single-file low-code prototype UI. Enter your API key at the top, then use the prompt box to ask ZyxoAI to generate posters/images or to edit uploaded text files.
+Why this is "no-key" and free
+- Wikipedia's APIs are public and CORS-friendly (with origin=*), so the browser can fetch summaries and page content directly — this yields short, sourced answers without keys.
+- Math evaluation uses an in-browser library (math.js), so it does not contact any external service.
 
-Quick start
-1. Clone the repository and open `index.html` in a modern browser (or use GitHub Pages).
-2. Click "Set API Key" and paste your API key for the provider you intend to use (the page is provider-agnostic; see notes below).
-3. Enter a prompt and choose an action:
-   - Generate Poster / Image — the page will call the configured image endpoint and show the image result.
-   - Edit File — upload a text file and a short instruction (e.g. "shorten this to 200 words"). The example will call a chat/edit endpoint and display the edited text.
+Limitations and important notes
+- Coverage & depth: Wikipedia summaries are good for many topics but may be incomplete or not tailored to a grade level — ask follow-ups like "Explain it for a 12-year-old" to get simpler wording.
+- Bias & accuracy: Wikipedia is generally high-quality but can contain errors. Always cross-check important facts.
+- CORS & other websites: Fetching arbitrary sites from the browser is often blocked by CORS. The prototype includes an optional public proxy (AllOrigins) but public proxies are rate-limited and not suitable for production.
+- No LLM behind editing: The "Edit" feature in the no-key mode is a naive heuristic. For robust editing or rewriting you still need an LLM provider (OpenAI, Anthropic, etc.).
+- Security: Never store production API keys in the browser. Use a server-side proxy for production.
 
-Provider notes
-- The prototype includes placeholder example code for calling a typical REST LLM/image API (e.g. OpenAI, Stability). You must update the endpoint URLs and request format to match your provider's API.
-- Calling APIs directly from the browser is insecure because the key is exposed to anyone who can view network requests. For production host a small backend that proxies requests and keeps the key secret.
-
-Security and next steps
-- Replace direct browser calls with a server-side proxy (serverless function or small express app) that stores the API key in environment secrets.
-- Add authentication, rate-limiting, and input sanitization.
-- Add proper error handling, logging, and monitoring.
+Next steps (optional)
+- I can adapt index.html to call a specific free provider (if you want to use any other public, no-key data sources) — say which provider.
+- I can add a tiny serverless proxy so you can fetch arbitrary web pages server-side (avoids CORS) — this requires deploying a small function (example provided).
+- If you want, I can push these changes to the repository for you (I need repo write permission). Reply "Please push" if you've authorized me.
 
 License
-This project is licensed under the MIT License. See LICENSE for details.
+This project is MIT-licensed. See LICENSE if you add it.
