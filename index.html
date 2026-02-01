@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZyxoAI — Prototype</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 20px; max-width:900px; margin:auto; }
+    header { display:flex; justify-content:space-between; align-items:center; }
+    textarea { width:100%; height:120px; }
+    .controls { display:flex; gap:8px; margin:8px 0; }
+    .result { margin-top:16px; border:1px solid #eee; padding:12px; border-radius:8px; background:#fafafa; }
+    img.poster { max-width:100%; height:auto; border:1px solid #ddd; }
+    label { font-weight:600; }
+    input[type="file"] { display:block; }
+    footer { margin-top:24px; color:#666; font-size:13px; }
+    button { padding:8px 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ZyxoAI — Prototype</h1>
+    <div>
+      <button id="setKeyBtn">Set API Key</button>
+    </div>
+  </header>
+
+  <p>A low-code prototype. Enter an API key (stored in browser localStorage for convenience), type a prompt, and choose an action.</p>
+
+  <div>
+    <label for="prompt">Prompt</label>
+    <textarea id="prompt" placeholder="Describe the poster or the edit you want, e.g. 'Create a colorful poster for a summer music festival' or 'Shorten this file to 150 words and keep the tone friendly.'"></textarea>
+  </div>
+
+  <div class="controls">
+    <select id="action">
+      <option value="generate_poster">Generate Poster (image)</option>
+      <option value="generate_image">Generate Image</option>
+      <option value="edit_file">Edit Uploaded Text File</option>
+    </select>
+
+    <input type="file" id="fileInput" accept=".txt,.md,.json" />
+    <button id="runBtn">Run ZyxoAI</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+
+  <div id="status" class="result" style="display:none;"></div>
+
+  <div id="imageResult" class="result" style="display:none;"></div>
+  <div id="textResult" class="result" style="display:none;"></div>
+
+  <footer>
+    Prototype — keys in browser are insecure. For production use a server-side proxy. See README for notes.
+  </footer>
+
+  <script>
+    // Very small helper prototype. This is intentionally minimal and provider-agnostic.
+    const STORAGE_KEY = 'ZYXO_API_KEY';
+
+    function setApiKey() {
+      const key = prompt('Paste your API key here (it will be stored in localStorage for this prototype)');
+      if (key) {
+        localStorage.setItem(STORAGE_KEY, key.trim());
+        alert('API key saved in localStorage (prototype).');
+      }
+    }
+
+    function getApiKey() {
+      return localStorage.getItem(STORAGE_KEY) || '';
+    }
+
+    document.getElementById('setKeyBtn').addEventListener('click', setApiKey);
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('prompt').value = '';
+      document.getElementById('imageResult').style.display = 'none';
+      document.getElementById('textResult').style.display = 'none';
+      document.getElementById('status').style.display = 'none';
+    });
+
+    document.getElementById('runBtn').addEventListener('click', async () => {
+      const action = document.getElementById('action').value;
+      const prompt = document.getElementById('prompt').value.trim();
+      const fileInput = document.getElementById('fileInput');
+
+      if (!getApiKey()) { alert('Please set an API key first.'); return; }
+      if (!prompt && action !== 'edit_file') { alert('Please enter a prompt.'); return; }
+
+      showStatus('Working...');
+
+      try {
+        if (action === 'generate_poster' || action === 'generate_image') {
+          // Placeholder: update API endpoint and body to match your provider.
+          const imgDataUrl = await generateImageFromPrompt(prompt, { style: action === 'generate_poster' ? 'poster' : 'image' });
+          showImageResult(imgDataUrl);
+        } else if (action === 'edit_file') {
+          if (!fileInput.files || fileInput.files.length === 0) { alert('Please upload a text file to edit.'); hideStatus(); return; }
+          const file = fileInput.files[0];
+          const text = await file.text();
+          const edited = await editTextFileWithPrompt(text, prompt);
+          showTextResult(edited);
+        }
+        hideStatus();
+      } catch (err) {
+        showStatus('Error: ' + (err.message || err), true);
+        console.error(err);
+      }
+    });
+
+    function showStatus(msg, isError = false) {
+      const el = document.getElementById('status');
+      el.style.display = 'block';
+      el.textContent = msg;
+      el.style.color = isError ? 'crimson' : 'inherit';
+    }
+    function hideStatus() { document.getElementById('status').style.display = 'none'; }
+
+    function showImageResult(dataUrl) {
+      const container = document.getElementById('imageResult');
+      container.innerHTML = '';
+      const img = document.createElement('img');
+      img.className = 'poster';
+      img.src = dataUrl;
+      container.appendChild(img);
+      container.style.display = 'block';
+      document.getElementById('textResult').style.display = 'none';
+    }
+
+    function showTextResult(text) {
+      const container = document.getElementById('textResult');
+      container.innerHTML = '';
+      const pre = document.createElement('pre');
+      pre.textContent = text;
+      container.appendChild(pre);
+      container.style.display = 'block';
+      document.getElementById('imageResult').style.display = 'none';
+    }
+
+    // ----- Provider-agnostic example implementations (prototype) -----
+    // These functions show how to call a typical REST LLM/image API. Update them to match your provider.
+
+    async function generateImageFromPrompt(prompt, opts = {}) {
+      // Example for an image-generation endpoint that returns base64-encoded PNG in a JSON field 'b64_json'.
+      // Replace URL and request body structure with your provider's API.
+      const API_BASE = 'https://api.your-provider.example'; // << REPLACE this
+      const apiKey = getApiKey();
+
+      // Example request shape — change as needed.
+      const body = {
+        prompt,
+        size: '1024x1024',
+        style: opts.style || 'default'
+      };
+
+      const resp = await fetch(API_BASE + '/v1/images/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!resp.ok) throw new Error('Image API request failed: ' + resp.status + ' ' + await resp.text());
+      const data = await resp.json();
+
+      // Provider typically returns a base64 image; adapt to your provider.
+      // This example expects data.data[0].b64_json or data.b64_json.
+      const b64 = (data?.data?.[0]?.b64_json) || data?.b64_json || data?.image_base64;
+      if (!b64) throw new Error('No image data returned. Inspect response in console.');
+      return 'data:image/png;base64,' + b64;
+    }
+
+    async function editTextFileWithPrompt(fileText, instruction) {
+      // Example for a chat/edit endpoint. Replace URL, model, and request shape to match provider.
+      const API_BASE = 'https://api.your-provider.example'; // << REPLACE this
+      const apiKey = getApiKey();
+
+      // Many providers support a chat/completions endpoint. This example uses a generic shape.
+      const body = {
+        instruction,
+        input: fileText,
+      };
+
+      const resp = await fetch(API_BASE + '/v1/edits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!resp.ok) throw new Error('Edit API request failed: ' + resp.status + ' ' + await resp.text());
+      const data = await resp.json();
+
+      // Adjust this to match the response shape from your provider. This expects data.choices[0].text or data.output.
+      return data?.choices?.[0]?.text || data?.output || JSON.stringify(data, null, 2);
+    }
+
+  </script>
+</body>
+</html>
